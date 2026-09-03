@@ -1,0 +1,21 @@
+services:
+  auth-postgres:
+    image: postgres:16-bookworm
+    container_name: auth-env-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata-auth:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  auth-port-forward:
+    image: alpine/socat:1.8.0.3
+    container_name: auth-env-port-forwarder
+    command: tcp-listen:${POSTGRES_PORT:-5432},fork,reuseaddr tcp-connect:auth-postgres:5432
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+
+volumes:
+  pgdata-auth: {}

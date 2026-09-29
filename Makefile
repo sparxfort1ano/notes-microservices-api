@@ -4,32 +4,35 @@ export NOTES_ROOT=${PROJECT_ROOT}/notes/
 
 .DEFAULT_GOAL := help
 
+DC_AUTH = docker compose -p auth-env -f docker-compose.auth.yml --env-file .env.auth
+DC_NOTES = docker compose -p notes-env -f docker-compose.notes.yml --env-file .env.notes
+
 auth-env-up: ## Auth-env: Launch the auth microservice environment
-	@docker compose --env-file .env.auth up -d auth-postgres
+	@$(DC_AUTH) up -d auth-postgres
 
 auth-env-down: ## Auth-env: Stop the microservice environment
-	@docker compose --env-file .env.auth down auth-postgres
+	@$(DC_AUTH) down auth-postgres
 
 auth-env-cleanup: ## Auth-env: Clear the microservice environment
 	@read -p "Очистить все volume файлы окружения auth? Опасность утери данных. [y/N]: " ans; \
 	if [ "$$ans" = "y" ]; then \
-		docker compose down auth-postgres -v && \
+		$(DC_AUTH) down auth-postgres -v && \
 		echo "Файлы окружения очищены"; \
 	else \
 		echo "Очистка окружения отменена"; \
 	fi
 
 auth-port-forwarder: ## Auth-env: Start the socat container for port forwarding
-	@docker compose --env-file .env.auth up -d auth-port-forward
+	@$(DC_AUTH) up -d auth-port-forward
 
 auth-port-close: ## Auth-env: Stop the socat container
-	@docker compose --env-file .env.auth down auth-port-forward
+	@$(DC_AUTH) down auth-port-forward
 
 auth-pgadmin-up: ## Auth-env: Start the PgAdmin container
-	@docker compose --env-file .env.auth up -d auth-pgadmin
+	@$(DC_AUTH) up -d auth-pgadmin
 
 auth-pgadmin-down: ## Auth-env: Stop the PgAdmin container
-	@docker compose --env-file .env.auth down auth-pgadmin
+	@$(DC_AUTH) down auth-pgadmin
 
 
 auth-run: ## Auth-Go: Execute the Go application locally (for local development and testing)
@@ -41,10 +44,10 @@ auth-run: ## Auth-Go: Execute the Go application locally (for local development 
 	go run ./cmd/
 
 auth-deploy: ## Auth-Go: Start the Go application in the Docker Compose service (for deploying)
-	@docker compose --env-file .env.auth up -d --build auth
+	@$(DC_AUTH) up -d --build auth
 
 auth-undeploy: ## Auth-Go: Stop the Go application in the Docker Compose service
-	@docker compose --env-file .env.auth down auth
+	@$(DC_AUTH) down auth
 
 
 auth-api-test: ## Auth-Test: Execute script to test Auth API
@@ -61,9 +64,67 @@ auth-go-get: ## Auth-Util: Execute go get command
 
 
 
-ps: ## Env: View running Docker Compose services
-	@docker compose --env-file .env.auth ps
+notes-env-up: ## Notes-env: Launch the notes microservice environment
+	@$(DC_NOTES) up -d notes-mongodb notes-redis
 
+notes-env-down: ## Notes-env: Stop the microservice environment
+	@$(DC_NOTES) down notes-mongodb notes-redis
+
+notes-env-cleanup: ## Notes-env: Clear the microservice environment
+	@read -p "Очистить все volume файлы окружения notes? Опасность утери данных. [y/N]: " ans; \
+	if [ "$$ans" = "y" ]; then \
+		$(DC_NOTES) down notes-mongodb notes-redis -v && \
+		echo "Файлы окружения очищены"; \
+	else \
+		echo "Очистка окружения отменена"; \
+	fi
+
+notes-port-forwarder: ## Notes-env: Start the socat container for port forwarding
+	@$(DC_NOTES) up -d notes-port-forward
+
+notes-port-close: ## Notes-env: Stop the socat container
+	@$(DC_NOTES) down notes-port-forward
+
+
+notes-run: ## Notes-Go: Execute the Go application locally (for local development and testing)
+	@set -a && . ./.env.notes && set +a && \
+	export REDIS_HOST=localhost && \
+	export MONGO_INITDB_HOST=localhost && \
+	export LOGGER_FOLDER=${PROJECT_ROOT}/out/logs/notes && \
+	cd ${NOTES_ROOT} && \
+	go mod tidy && \
+	go run ./cmd/
+
+notes-deploy: ## Notes-Go: Start the Go application in the Docker Compose service (for deploying)
+	@$(DC_NOTES) up -d --build notes
+
+notes-undeploy: ## Notes-Go: Stop the Go application in the Docker Compose service
+	@$(DC_NOTES) down notes
+
+
+notes-api-test: ## Notes-Test: Execute script to test Notes API
+	@bash ${NOTES_ROOT}/test-scripts/api.sh && \
+	bash ${NOTES_ROOT}/test-scripts/api2.sh
+
+notes-cache-test: ## Notes-Test: Execute script to test Notes cache
+	@bash ${NOTES_ROOT}/test-scripts/cache.sh
+
+
+notes-go-get: ## Notes-Util: Execute go get command
+	@if [ -z "$(path)" ]; then \
+		echo "Отсутствует необходимый параметр path. Пример: make notes-go-get path=github.com/gin-gonic/gin"; \
+		exit 1; \
+	fi; \
+	cd ${NOTES_ROOT} && \
+	go get $(path)
+
+
+
+ps: ## Env: View running Docker Compose services
+	@echo "=== Auth Services ===" && \
+	${DC_AUTH} ps && \
+	echo "=== Notes Services ===" && \
+	${DC_NOTES} ps
 
 
 help: ## Show help for commands

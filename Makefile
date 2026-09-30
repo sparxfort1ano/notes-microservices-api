@@ -6,6 +6,7 @@ export NOTES_ROOT=${PROJECT_ROOT}/notes/
 
 DC_AUTH = docker compose -p auth-env -f docker-compose.auth.yml --env-file .env.auth
 DC_NOTES = docker compose -p notes-env -f docker-compose.notes.yml --env-file .env.notes
+DC_NGINX = docker compose -p gateway-env -f docker-compose.nginx.yml
 
 auth-env-up: ## Auth-env: Launch the auth microservice environment
 	@$(DC_AUTH) up -d auth-postgres
@@ -120,12 +121,27 @@ notes-go-get: ## Notes-Util: Execute go get command
 
 
 
+gateway-up: ## Gateway: Launch the Nginx API gateway
+	@$(DC_NGINX) up -d
+
+gateway-down: ## Gateway: Stop the Nginx API gateway
+	@$(DC_NGINX) down
+
+gateway-test: ## Gateway: Execute global API testing through Nginx
+	@bash ${PROJECT_ROOT}/nginx/global_test.sh
+
+
+
 ps: ## Env: View running Docker Compose services
 	@echo "=== Auth Services ===" && \
 	${DC_AUTH} ps && \
 	echo "=== Notes Services ===" && \
-	${DC_NOTES} ps
+	${DC_NOTES} ps && \
+	echo "=== Other Services ===" && \
+	${DC_NGINX} ps
 
+network-create: ## Env: Single network for multiple Docker-compose files
+	@docker network create microservice-net
 
 help: ## Show help for commands
 	@echo "=== Help ==="

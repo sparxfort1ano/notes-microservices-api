@@ -29,6 +29,9 @@ services:
       - "${AUTH_PORT}:${AUTH_PORT}"
     depends_on:
       - auth-postgres
+    networks:
+      - microservices-net
+      - default
     volumes:
       - ${PROJECT_ROOT}/out/logs:/app/out/logs
     restart: unless-stopped
@@ -71,3 +74,7 @@ services:
 volumes:
   pgdata-auth: {}
   pgadmin-data: {}
+
+networks:
+  microservices-net:
+    external: true

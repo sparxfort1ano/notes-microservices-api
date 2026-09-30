@@ -34,6 +34,9 @@ services:
       - LOGGER_FOLDER=/app/out/logs
     ports:
       - "${NOTES_PORT:-8082}:8082"
+    networks:
+      - microservices-net
+      - default
     depends_on:
       - notes-mongodb
       - notes-redis
@@ -80,3 +83,7 @@ services:
 volumes:
   mongodata-notes: {}
   redisdata-notes: {}
+
+networks:
+  microservices-net:
+    external: true
